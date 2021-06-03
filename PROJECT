@@ -1,0 +1,19 @@
+domain: example.com
+layout:
+- go.kubebuilder.io/v3
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: finalizer-operator
+repo: github.com/example/finalizer-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: example.com
+  group: finalizer
+  kind: FinalizerOperator
+  path: github.com/example/finalizer-operator/api/v1
+  version: v1
+version: "3"

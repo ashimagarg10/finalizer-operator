@@ -1,0 +1,24 @@
+# permissions for end users to edit finalizeroperators.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: finalizeroperator-editor-role
+rules:
+- apiGroups:
+  - finalizer.example.com
+  resources:
+  - finalizeroperators
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - finalizer.example.com
+  resources:
+  - finalizeroperators/status
+  verbs:
+  - get

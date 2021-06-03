@@ -1,0 +1,34 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - finalizer.example.com
+  resources:
+  - finalizeroperators
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - finalizer.example.com
+  resources:
+  - finalizeroperators/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - finalizer.example.com
+  resources:
+  - finalizeroperators/status
+  verbs:
+  - get
+  - patch
+  - update

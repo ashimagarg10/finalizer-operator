@@ -1,0 +1,18 @@
+apiVersion: finalizer.example.com/v1
+kind: FinalizerOperator
+metadata:
+  name: sample
+spec:
+  # Add fields here
+  # foo: bar
+  # namespace: "local-storage"
+  namespace: "trident"
+  resources: 
+    # - name: "deployment"
+    #   value: "local-storage-operator"
+    # - name: "pod"
+    #   value: "pod-devtest-blk-01"
+    # - name: "pvc"
+    #   value: "devtest-blk-pvc"
+    - name: "deployment"
+      value: "trident-csi"
