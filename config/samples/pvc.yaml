@@ -1,12 +1,12 @@
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: devtest-blk-pvc
+  name: netapp-pvc
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 50Gi
-  volumeMode: Block
-  storageClassName: sat-local-block-gold
+  volumeMode: Filesystem
+  storageClassName: sat-netapp-file-gold

@@ -4,15 +4,16 @@ metadata:
   name: sample
 spec:
   # Add fields here
-  # foo: bar
-  # namespace: "local-storage"
+  templateName: "trident"
   namespace: "trident"
   resources: 
-    # - name: "deployment"
-    #   value: "local-storage-operator"
-    # - name: "pod"
-    #   value: "pod-devtest-blk-01"
-    # - name: "pvc"
-    #   value: "devtest-blk-pvc"
-    - name: "deployment"
-      value: "trident-csi"
+    - type: "deployment"
+      name: "trident-csi"
+      namespace: "trident"
+    - type: "deployment"
+      name: "trident-operator"
+      namespace: "trident"
+
+
+
+

@@ -1,17 +1,18 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: pod-devtest-blk-01
+  name: netapp-pod
 spec:
   volumes:
   - name: test-vol
     persistentVolumeClaim:
-        claimName: devtest-blk-pvc
+        claimName: netapp-pvc
   containers:
-  - name: devtest-demo-container
+  - name: app
     image: ubuntu:latest
+    imagePullPolicy: Always
     command: ["sh"]
     args: ["-c", "while true; do echo date; sleep 10; done"]
-    volumeDevices:
+    volumeMounts:
     - name: test-vol
-      devicePath: "/dev/xvdc"
+      mountPath: "/test"

@@ -58,6 +58,7 @@ type FinalizerOperatorReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.2/pkg/reconcile
+
 func (r *FinalizerOperatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("finalizeroperator", req.NamespacedName)
 
@@ -76,153 +77,109 @@ func (r *FinalizerOperatorReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
+	template := instance.Spec.TemplateName
 	resources := instance.Spec.Resources
 	namespace := instance.Spec.Namespace
 
-	fmt.Println(resources)
-	fmt.Println(namespace)
+	var resourceMap = make([]map[string]string, 1)
 
-	finalizer_name := "testing/finalizer"
+	fmt.Println(template, namespace, resources, resourceMap)
 
-	flag := true
-
-	for flag {
-		for index := range resources {
-			resourceType := resources[index].Name
-			resourceName := resources[index].Value
-
-			if resourceType == "deployment" {
-				fmt.Println("Getting Deployment")
-				res := &appsv1.Deployment{}
-				err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, res)
-				if err != nil {
-					fmt.Print("Error in Getting deployment")
-					return ctrl.Result{}, err
-				}
-
-				fmt.Println("Check for Finalizer")
-
-				// examine DeletionTimestamp to determine if object is under deletion
-				if res.ObjectMeta.DeletionTimestamp.IsZero() {
-					// The object is not being deleted, so if it does not have our finalizer,
-					// then lets add the finalizer and update the object. This is equivalent
-					// registering our finalizer.
-					if !containsString(res.GetFinalizers(), finalizer_name) {
-						controllerutil.AddFinalizer(res, finalizer_name)
-						err = r.Update(ctx, res)
-						if err != nil {
-							log.Error(err, "Error is updating resource ", resourceName)
-							return ctrl.Result{}, err
-						}
-					}
-				} else {
-					// The object is being deleted
-					if containsString(res.GetFinalizers(), finalizer_name) {
-						// our finalizer is present
-						fmt.Println("Finalizer Present")
-						// remove external dependencies
-
-						_, out, _ := ExecuteCommand("kubectl patch tprov trident -n " + namespace + " --type=merge -p '{\"spec\":{\"uninstall\":true}}'")
-						fmt.Println(out)
-						_, out, _ = ExecuteCommand("kubectl patch tprov trident -n " + namespace + " --type=merge -p '{\"spec\":{\"wipeout\":[\"crds\"],\"uninstall\":true}}'")
-						fmt.Println(out)
-					}
-					// remove our finalizer from the list and update it.
-					controllerutil.RemoveFinalizer(res, finalizer_name)
-					err = r.Update(ctx, res)
-					if err != nil {
-						log.Error(err, "Error is updating resource ", resourceName)
-						return ctrl.Result{}, err
-					}
-					flag = false
-				}
-			} else if resourceType == "pod" {
-				fmt.Println("Getting POD")
-				res := &corev1.Pod{}
-				err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: "default"}, res)
-				if err != nil {
-					fmt.Print("Error in Getting pod")
-					return ctrl.Result{}, err
-				}
-
-				fmt.Println("Check for Finalizer")
-
-				// examine DeletionTimestamp to determine if object is under deletion
-				if res.ObjectMeta.DeletionTimestamp.IsZero() {
-					// The object is not being deleted, so if it does not have our finalizer,
-					// then lets add the finalizer and update the object. This is equivalent
-					// registering our finalizer.
-					if !containsString(res.GetFinalizers(), finalizer_name) {
-						controllerutil.AddFinalizer(res, finalizer_name)
-						err = r.Update(ctx, res)
-						if err != nil {
-							log.Error(err, "Error is updating resource ", resourceName)
-							return ctrl.Result{}, err
-						}
-					}
-				} else {
-					// The object is being deleted
-					if containsString(res.GetFinalizers(), finalizer_name) {
-						// our finalizer is present
-						fmt.Println("Finalizer Present")
-					}
-					// remove our finalizer from the list and update it.
-					controllerutil.RemoveFinalizer(res, finalizer_name)
-					err = r.Update(ctx, res)
-					if err != nil {
-						log.Error(err, "Error is updating resource ", resourceName)
-						return ctrl.Result{}, err
-					}
-				}
-			} else if resourceType == "pvc" {
-				fmt.Println("Getting PVC")
-				// res := &v1.OperatorGroup{}
-				res := &corev1.PersistentVolumeClaim{}
-				err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: "default"}, res)
-				if err != nil {
-					fmt.Print("Error in Getting pvc")
-					return ctrl.Result{}, err
-				}
-
-				fmt.Println("Check for Finalizer")
-
-				// examine DeletionTimestamp to determine if object is under deletion
-				if res.ObjectMeta.DeletionTimestamp.IsZero() {
-					// The object is not being deleted, so if it does not have our finalizer,
-					// then lets add the finalizer and update the object. This is equivalent
-					// registering our finalizer.
-					if !containsString(res.GetFinalizers(), finalizer_name) {
-						controllerutil.AddFinalizer(res, finalizer_name)
-						err = r.Update(ctx, res)
-						if err != nil {
-							log.Error(err, "Error is updating resource ", resourceName)
-							return ctrl.Result{}, err
-						}
-					}
-				} else {
-					// The object is being deleted
-					if containsString(res.GetFinalizers(), finalizer_name) {
-						// our finalizer is present, so handle any external dependency
-						fmt.Println("Finalizer Present")
-
-						command := "kubectl -n default patch persistentvolumeclaim/" + resourceName + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge"
-						_, out, _ := ExecuteCommand(command)
-						fmt.Println(out)
-					}
-					// remove our finalizer from the list and update it.
-					controllerutil.RemoveFinalizer(res, finalizer_name)
-					err = r.Update(ctx, res)
-					if err != nil {
-						log.Error(err, "Error is updating resource ", resourceName)
-						return ctrl.Result{}, err
-					}
-				}
-			}
-		}
-		time.Sleep(time.Duration(10) * time.Second)
+	for index := range resources {
+		rmap := make(map[string]string)
+		rmap["Type"] = resources[index].Type
+		rmap["Name"] = resources[index].Name
+		rmap["Namespace"] = resources[index].Namespace
+		resourceMap = append(resourceMap, rmap)
 	}
 
-	return ctrl.Result{}, nil
+	fmt.Println(resourceMap)
+
+	finalizer_name := "testing/finalizer"
+	flagNamespace := false
+	flagOther := false
+
+	fmt.Println("Getting Namespace")
+	res := &corev1.Namespace{}
+	err = r.Get(ctx, types.NamespacedName{Name: namespace}, res)
+	if err != nil {
+		fmt.Print("Error in Getting Namespace")
+		return ctrl.Result{}, err
+	}
+
+	// examine DeletionTimestamp to determine if object is under deletion
+	if res.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, so if it does not have our finalizer,
+		// then lets add the finalizer and update the object. This is equivalent
+		// registering our finalizer.
+		if !containsString(res.GetFinalizers(), finalizer_name) {
+			controllerutil.AddFinalizer(res, finalizer_name)
+			err = r.Update(ctx, res)
+			if err != nil {
+				log.Error(err, "Error is updating resource ", namespace)
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		// The object is being deleted
+		if containsString(res.GetFinalizers(), finalizer_name) {
+			fmt.Println("Finalizer Present")
+			removeCRDs(resourceMap, true)
+			_, out, _ := ExecuteCommand("kubectl patch ns " + namespace + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+			fmt.Println(out)
+		} else {
+			removeCRDs(resourceMap, false)
+		}
+		flagNamespace = true
+	}
+
+	for index := range resourceMap {
+		resourceType := resourceMap[index]["Type"]
+		resourceName := resourceMap[index]["Name"]
+		resourceNamespace := resourceMap[index]["Namespace"]
+
+		if resourceType == "deployment" && !flagNamespace {
+			fmt.Println("Getting Deployment")
+			res := &appsv1.Deployment{}
+			err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, res)
+			if err != nil {
+				fmt.Print("Error in Getting deployment")
+				return ctrl.Result{}, err
+			}
+
+			// examine DeletionTimestamp to determine if object is under deletion
+			if res.ObjectMeta.DeletionTimestamp.IsZero() {
+				// The object is not being deleted, so if it does not have our finalizer,
+				// then lets add the finalizer and update the object. This is equivalent
+				// registering our finalizer.
+				if !containsString(res.GetFinalizers(), finalizer_name) {
+					controllerutil.AddFinalizer(res, finalizer_name)
+					err = r.Update(ctx, res)
+					if err != nil {
+						log.Error(err, "Error is updating resource ", resourceName)
+						return ctrl.Result{}, err
+					}
+				}
+			} else {
+				// The object is being deleted
+				// if containsString(res.GetFinalizers(), finalizer_name) {
+				fmt.Println("Finalizer Present")
+				// cleanup
+				performCleanUp(resourceNamespace)
+				// }
+				flagOther = true
+				break
+			}
+		}
+	}
+
+	fmt.Println(flagOther, flagNamespace)
+
+	if flagOther || flagNamespace {
+		fmt.Println("Exiting...")
+		return ctrl.Result{}, nil
+	}
+	return ctrl.Result{RequeueAfter: time.Duration(20) * time.Second, Requeue: true}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -275,4 +232,66 @@ func ExecuteCommand(command string) (int, string, string) {
 		fmt.Print(time.Now().String() + " Timed out " + command)
 	}
 	return waitStatus.ExitStatus(), outStr, errStr
+}
+
+// performCleanUp to clean all resources
+func performCleanUp(namespace string) {
+	_, out, _ := ExecuteCommand("kubectl patch tprov trident -n " + namespace + " --type=merge -p '{\"spec\":{\"uninstall\":true}}'")
+	fmt.Println(out)
+	_, out, _ = ExecuteCommand("kubectl patch tprov trident -n " + namespace + " --type=merge -p '{\"spec\":{\"wipeout\":[\"crds\"],\"uninstall\":true}}'")
+	fmt.Println(out)
+	_, out, _ = ExecuteCommand("kubectl delete psp tridentoperatorpods")
+	fmt.Println(out)
+	_, out, _ = ExecuteCommand("kubectl patch deploy trident-csi -n " + namespace + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+	fmt.Println(out)
+	_, out, _ = ExecuteCommand("kubectl patch deploy trident-operator -n " + namespace + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+	fmt.Println(out)
+	_, out, _ = ExecuteCommand("kubectl delete deploy trident-operator -n " + namespace)
+	fmt.Println(out)
+	_, out, _ = ExecuteCommand("kubectl delete crd tridentprovisioners.trident.netapp.io")
+	fmt.Println(out)
+
+	_, out, _ = ExecuteCommand("kubectl patch ns " + namespace + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+	fmt.Println(out)
+	_, out, _ = ExecuteCommand("kubectl delete ns " + namespace)
+	fmt.Println(out)
+}
+
+func removeCRDs(resources []map[string]string, flag bool) {
+	crdNames := []string{"tridentbackends.trident.netapp.io", "tridentsnapshots.trident.netapp.io", "tridentstorageclasses.trident.netapp.io",
+		"tridenttransactions.trident.netapp.io", "tridentvolumes.trident.netapp.io", "tridentversions.trident.netapp.io", "tridentnodes.trident.netapp.io"}
+	for index := range crdNames {
+		crd := crdNames[index]
+		_, out, _ := ExecuteCommand("kubectl patch crd/" + crd + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+		fmt.Println(out)
+		_, out, _ = ExecuteCommand("kubectl delete crd " + crd)
+		fmt.Println(out)
+	}
+
+	// _, out, _ := ExecuteCommand("kubectl patch crd/tridentversions.trident.netapp.io -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+	// fmt.Println(out)
+	// _, out, _ = ExecuteCommand("kubectl patch crd/tridentversions.trident.netapp.io -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+	// fmt.Println(out)
+	// _, out, _ = ExecuteCommand("kubectl delete crd tridentversions.trident.netapp.io")
+	// fmt.Println(out)
+
+	// _, out, _ = ExecuteCommand("kubectl patch crd/tridentnodes.trident.netapp.io -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+	// fmt.Println(out)
+	// _, out, _ = ExecuteCommand("kubectl patch crd/tridentnodes.trident.netapp.io -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+	// fmt.Println(out)
+	// _, out, _ = ExecuteCommand("kubectl delete crd tridentnodes.trident.netapp.io")
+	// fmt.Println(out)
+
+	if flag {
+		for index := range resources {
+			resourceType := resources[index]["Type"]
+			resourceName := resources[index]["Name"]
+			resourceNamespace := resources[index]["Namespace"]
+
+			if resourceType == "deployment" {
+				_, out, _ := ExecuteCommand("kubectl patch deploy " + resourceName + " -n " + resourceNamespace + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+				fmt.Println(out)
+			}
+		}
+	}
 }

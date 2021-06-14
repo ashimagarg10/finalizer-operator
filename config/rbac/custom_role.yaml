@@ -209,7 +209,7 @@ rules:
   verbs: ["watch", "get", "list", "create", "delete", "patch"]
 - apiGroups: ["apiextensions.k8s.io"]
   resources: ["customresourcedefinitions"]
-  verbs: ["watch", "get", "list", "create", "delete"]
+  verbs: ["watch", "get", "list", "create", "delete", "patch"]
 - apiGroups: ["policy"]
   resources: ["podsecuritypolicies"]
   verbs: ["watch", "get", "list", "create", "delete"]

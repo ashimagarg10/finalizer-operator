@@ -29,14 +29,15 @@ type FinalizerOperatorSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of FinalizerOperator. Edit finalizeroperator_types.go to remove/update
-	// Foo string `json:"foo,omitempty"`
-	Namespace string   `json:"namespace,omitempty"`
-	Resources []Params `json:"resources,omitempty"`
+	TemplateName string   `json:"templateName"`
+	Namespace    string   `json:"namespace"`
+	Resources    []Params `json:"resources,omitempty"`
 }
 
 type Params struct {
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
+	Type      string `json:"type,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // FinalizerOperatorStatus defines the observed state of FinalizerOperator

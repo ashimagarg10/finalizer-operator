@@ -37,18 +37,25 @@ spec:
             description: FinalizerOperatorSpec defines the desired state of FinalizerOperator
             properties:
               namespace:
-                description: Foo is an example field of FinalizerOperator. Edit finalizeroperator_types.go
-                  to remove/update Foo string `json:"foo,omitempty"`
                 type: string
               resources:
                 items:
                   properties:
                     name:
                       type: string
-                    value:
+                    namespace:
+                      type: string
+                    type:
                       type: string
                   type: object
                 type: array
+              templateName:
+                description: Foo is an example field of FinalizerOperator. Edit finalizeroperator_types.go
+                  to remove/update
+                type: string
+            required:
+            - namespace
+            - templateName
             type: object
           status:
             description: FinalizerOperatorStatus defines the observed state of FinalizerOperator

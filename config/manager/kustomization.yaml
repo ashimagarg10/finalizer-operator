@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: ashima27/test
-  newTag: "17"
+  newTag: "43"
