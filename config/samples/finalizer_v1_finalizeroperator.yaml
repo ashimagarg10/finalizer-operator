@@ -4,15 +4,26 @@ metadata:
   name: sample
 spec:
   # Add fields here
-  templateName: "trident"
-  namespace: "trident"
+  # templateName: "trident"
+  # namespace: "trident"
+  # resources: 
+  #   - type: "deployment"
+  #     name: "trident-csi"
+  #     namespace: "trident"
+  #   - type: "deployment"
+  #     name: "trident-operator"
+  #     namespace: "trident"
+  
+  templateName: "local-volume"
+  namespace: "local-storage"
   resources: 
     - type: "deployment"
-      name: "trident-csi"
-      namespace: "trident"
-    - type: "deployment"
-      name: "trident-operator"
-      namespace: "trident"
+      name: "local-storage-operator"
+      namespace: "local-storage"
+    - type: "localvolume"
+      name: "local-disk"
+      namespace: "local-storage"
+  
 
 
 

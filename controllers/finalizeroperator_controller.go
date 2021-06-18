@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	localv1 "github.com/openshift/local-storage-operator/pkg/apis/local/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -99,76 +100,189 @@ func (r *FinalizerOperatorReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	flagNamespace := false
 	flagOther := false
 
-	fmt.Println("Getting Namespace")
-	res := &corev1.Namespace{}
-	err = r.Get(ctx, types.NamespacedName{Name: namespace}, res)
-	if err != nil {
-		fmt.Print("Error in Getting Namespace")
-		return ctrl.Result{}, err
-	}
-
-	// examine DeletionTimestamp to determine if object is under deletion
-	if res.ObjectMeta.DeletionTimestamp.IsZero() {
-		// The object is not being deleted, so if it does not have our finalizer,
-		// then lets add the finalizer and update the object. This is equivalent
-		// registering our finalizer.
-		if !containsString(res.GetFinalizers(), finalizer_name) {
-			controllerutil.AddFinalizer(res, finalizer_name)
-			err = r.Update(ctx, res)
-			if err != nil {
-				log.Error(err, "Error is updating resource ", namespace)
-				return ctrl.Result{}, err
-			}
+	if template == "trident" {
+		fmt.Println("Getting Namespace")
+		res := &corev1.Namespace{}
+		err = r.Get(ctx, types.NamespacedName{Name: namespace}, res)
+		if err != nil {
+			fmt.Print("Error in Getting Namespace")
+			return ctrl.Result{}, err
 		}
-	} else {
-		// The object is being deleted
-		if containsString(res.GetFinalizers(), finalizer_name) {
-			fmt.Println("Finalizer Present")
-			removeCRDs(resourceMap, true)
-			_, out, _ := ExecuteCommand("kubectl patch ns " + namespace + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
-			fmt.Println(out)
+		// examine DeletionTimestamp to determine if object is under deletion
+		if res.ObjectMeta.DeletionTimestamp.IsZero() {
+			// The object is not being deleted, so if it does not have our finalizer,
+			// then lets add the finalizer and update the object. This is equivalent
+			// registering our finalizer.
+			if !containsString(res.GetFinalizers(), finalizer_name) {
+				controllerutil.AddFinalizer(res, finalizer_name)
+				err = r.Update(ctx, res)
+				if err != nil {
+					log.Error(err, "Error is updating resource ", namespace)
+					return ctrl.Result{}, err
+				}
+			}
 		} else {
-			removeCRDs(resourceMap, false)
-		}
-		flagNamespace = true
-	}
-
-	for index := range resourceMap {
-		resourceType := resourceMap[index]["Type"]
-		resourceName := resourceMap[index]["Name"]
-		resourceNamespace := resourceMap[index]["Namespace"]
-
-		if resourceType == "deployment" && !flagNamespace {
-			fmt.Println("Getting Deployment")
-			res := &appsv1.Deployment{}
-			err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, res)
-			if err != nil {
-				fmt.Print("Error in Getting deployment")
-				return ctrl.Result{}, err
+			// The object is being deleted
+			if containsString(res.GetFinalizers(), finalizer_name) {
+				fmt.Println("Finalizer Present")
+				removeCRDs(resourceMap, true)
+				_, out, _ := ExecuteCommand("kubectl patch ns " + namespace + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+				fmt.Println(out)
+			} else {
+				removeCRDs(resourceMap, false)
 			}
+			flagNamespace = true
+		}
 
-			// examine DeletionTimestamp to determine if object is under deletion
-			if res.ObjectMeta.DeletionTimestamp.IsZero() {
-				// The object is not being deleted, so if it does not have our finalizer,
-				// then lets add the finalizer and update the object. This is equivalent
-				// registering our finalizer.
-				if !containsString(res.GetFinalizers(), finalizer_name) {
-					controllerutil.AddFinalizer(res, finalizer_name)
-					err = r.Update(ctx, res)
-					if err != nil {
-						log.Error(err, "Error is updating resource ", resourceName)
-						return ctrl.Result{}, err
+		for index := range resourceMap {
+			resourceType := resourceMap[index]["Type"]
+			resourceName := resourceMap[index]["Name"]
+			resourceNamespace := resourceMap[index]["Namespace"]
+
+			if resourceType == "deployment" && !flagNamespace {
+				fmt.Println("Getting Deployment")
+				res := &appsv1.Deployment{}
+				err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, res)
+				if err != nil {
+					fmt.Print("Error in Getting deployment")
+					return ctrl.Result{}, err
+				}
+
+				// examine DeletionTimestamp to determine if object is under deletion
+				if res.ObjectMeta.DeletionTimestamp.IsZero() {
+					// The object is not being deleted, so if it does not have our finalizer,
+					// then lets add the finalizer and update the object. This is equivalent
+					// registering our finalizer.
+					if !containsString(res.GetFinalizers(), finalizer_name) {
+						controllerutil.AddFinalizer(res, finalizer_name)
+						err = r.Update(ctx, res)
+						if err != nil {
+							log.Error(err, "Error is updating resource ", resourceName)
+							return ctrl.Result{}, err
+						}
+					}
+				} else {
+					// The object is being deleted
+					// if containsString(res.GetFinalizers(), finalizer_name) {
+					fmt.Println("Finalizer Present")
+					// cleanup
+					performCleanUp(resourceNamespace)
+					// }
+					flagOther = true
+					break
+				}
+			}
+		}
+	} else if template == "local-volume" {
+		fmt.Println("Local Volume")
+		fmt.Println("Getting Namespace")
+		res := &corev1.Namespace{}
+		err = r.Get(ctx, types.NamespacedName{Name: namespace}, res)
+		if err != nil {
+			fmt.Print("Error in Getting Namespace")
+			return ctrl.Result{}, err
+		}
+		// examine DeletionTimestamp to determine if object is under deletion
+		if res.ObjectMeta.DeletionTimestamp.IsZero() {
+			// The object is not being deleted, so if it does not have our finalizer,
+			// then lets add the finalizer and update the object. This is equivalent
+			// registering our finalizer.
+			if !containsString(res.GetFinalizers(), finalizer_name) {
+				controllerutil.AddFinalizer(res, finalizer_name)
+				err = r.Update(ctx, res)
+				if err != nil {
+					log.Error(err, "Error is updating resource ", namespace)
+					return ctrl.Result{}, err
+				}
+			}
+		} else {
+			// The object is being deleted
+			if containsString(res.GetFinalizers(), finalizer_name) && r.localVolumeNSCleanUp(ctx, namespace, resourceMap, true) {
+				fmt.Println("Finalizer Present")
+				_, out, _ := ExecuteCommand("kubectl patch ns " + namespace + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
+				fmt.Println(out)
+				flagNamespace = true
+
+			} else if r.localVolumeNSCleanUp(ctx, namespace, resourceMap, false) {
+				flagNamespace = true
+			}
+		}
+
+		for index := range resourceMap {
+			resourceType := resourceMap[index]["Type"]
+			resourceName := resourceMap[index]["Name"]
+			resourceNamespace := resourceMap[index]["Namespace"]
+
+			if resourceType == "deployment" && !flagNamespace {
+				fmt.Println("Getting Deployment")
+				res := &appsv1.Deployment{}
+				err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, res)
+				if err != nil {
+					fmt.Print("Error in Getting deployment")
+					return ctrl.Result{}, err
+				}
+
+				// examine DeletionTimestamp to determine if object is under deletion
+				if res.ObjectMeta.DeletionTimestamp.IsZero() {
+					// The object is not being deleted, so if it does not have our finalizer,
+					// then lets add the finalizer and update the object. This is equivalent
+					// registering our finalizer.
+					if !containsString(res.GetFinalizers(), finalizer_name) {
+						controllerutil.AddFinalizer(res, finalizer_name)
+						err = r.Update(ctx, res)
+						if err != nil {
+							log.Error(err, "Error is updating resource ", resourceName)
+							return ctrl.Result{}, err
+						}
+					}
+				} else {
+					// The object is being deleted
+					if containsString(res.GetFinalizers(), finalizer_name) && r.localVolumeCleanUp(ctx, resourceNamespace) {
+						fmt.Println("Finalizer Present")
+						patchFinalizer(resourceType, resourceName, resourceNamespace)
+						flagOther = true
+						break
 					}
 				}
-			} else {
-				// The object is being deleted
-				// if containsString(res.GetFinalizers(), finalizer_name) {
-				fmt.Println("Finalizer Present")
-				// cleanup
-				performCleanUp(resourceNamespace)
-				// }
-				flagOther = true
-				break
+			} else if resourceType == "localvolume" && !flagNamespace {
+				fmt.Println("Getting Local-Disk")
+				res := &localv1.LocalVolume{}
+				err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, res)
+				if err != nil {
+					fmt.Print("Error in Getting LocalVolume")
+					return ctrl.Result{}, err
+				}
+
+				// examine DeletionTimestamp to determine if object is under deletion
+				if res.ObjectMeta.DeletionTimestamp.IsZero() {
+					// The object is not being deleted, so if it does not have our finalizer,
+					// then lets add the finalizer and update the object. This is equivalent
+					// registering our finalizer.
+					if !containsString(res.GetFinalizers(), finalizer_name) {
+						controllerutil.AddFinalizer(res, finalizer_name)
+						err = r.Update(ctx, res)
+						if err != nil {
+							log.Error(err, "Error is updating resource ", resourceName)
+							// fmt.Println("Error is updating resource ", resourceName)
+							return ctrl.Result{}, err
+						}
+					}
+				} else {
+					// The object is being deleted
+					patchLocalVolume(namespace)
+					if r.fetchRemovePV(ctx) && r.deleteMountedPath(ctx) && r.deleteSubAndOg(ctx, namespace) {
+						patchFinalizer("deploy", "local-storage-operator", resourceNamespace)
+						// LocalStorageOperator Deletion
+						command := "kubectl delete deploy local-storage-operator -n " + namespace
+						_, out, _ := ExecuteCommand(command)
+						fmt.Println("out:", out)
+						fmt.Println("LocalVolumeOperator Deleted.....")
+						flagOther = true
+						break
+					}
+				}
+			} else if index != 0 && !flagNamespace {
+				fmt.Println("Resource ", resourceType, " is not being watched")
 			}
 		}
 	}
@@ -289,8 +403,7 @@ func removeCRDs(resources []map[string]string, flag bool) {
 			resourceNamespace := resources[index]["Namespace"]
 
 			if resourceType == "deployment" {
-				_, out, _ := ExecuteCommand("kubectl patch deploy " + resourceName + " -n " + resourceNamespace + " -p '{\"metadata\":{\"finalizers\":[]}}' --type=merge")
-				fmt.Println(out)
+				patchFinalizer(resourceType, resourceName, resourceNamespace)
 			}
 		}
 	}

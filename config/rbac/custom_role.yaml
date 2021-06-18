@@ -117,6 +117,14 @@ rules:
   verbs:
   - get
   - create
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - privileged
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "watch", "update"]
@@ -206,7 +214,7 @@ rules:
   verbs: ["watch", "get", "list", "create", "delete"]
 - apiGroups: ["local.storage.openshift.io"]
   resources: ["localvolumes"]
-  verbs: ["watch", "get", "list", "create", "delete", "patch"]
+  verbs: ["watch", "get", "list", "create", "delete", "patch", "update"]
 - apiGroups: ["apiextensions.k8s.io"]
   resources: ["customresourcedefinitions"]
   verbs: ["watch", "get", "list", "create", "delete", "patch"]

@@ -33,7 +33,9 @@ import (
 
 	finalizerv1 "github.com/example/finalizer-operator/api/v1"
 	"github.com/example/finalizer-operator/controllers"
+	localv1 "github.com/openshift/local-storage-operator/pkg/apis/local/v1"
 	v1 "github.com/operator-framework/api/pkg/operators/v1"
+	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -48,6 +50,8 @@ func init() {
 	utilruntime.Must(finalizerv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 	utilruntime.Must(v1.AddToScheme(scheme))
+	utilruntime.Must(v1alpha1.AddToScheme(scheme))
+	utilruntime.Must(localv1.SchemeBuilder.AddToScheme(scheme))
 }
 
 func main() {
